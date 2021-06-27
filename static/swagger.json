@@ -1,0 +1,158 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Suggest route from source to destination",
+        "version": "1.0.0",
+        "title": "MRT Route Suggestion",
+        "contact": {
+            "email": "lhtetoo@gmail.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        }
+    },
+    "schemes":[
+        "http"
+    ],
+    "tags": [
+        {
+            "name": "MRT Route Manager",
+            "description": "API for getting route suggestion"
+        }
+    ],
+    "definitions": {
+        "station": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "number"
+                },
+                "name": {
+                    "type": "string",
+                    "format": "string"
+                },
+                "code_number": {
+                    "type": "string",
+                    "format": "number"
+                },
+                "opening_date": {
+                    "type": "string",
+                    "format": "date"
+                }
+            }
+        },
+        "line": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "number"
+                },
+                "name": {
+                    "type": "string",
+                    "format": "string"
+                },
+                "stations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "$ref": "#/definitions/station"
+                    }
+                }
+            }
+        },
+        "lines": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/line"
+            }
+        },
+        "route": {
+            "type": "object",
+            "properties": {
+                "stations_travelled": {
+                    "type": "string",
+                    "format": "number"
+                },
+                "stations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "format": "string"
+                    }
+                },
+                "details": {
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        }
+    },
+    "paths": {
+        "/lines": {
+            "get": {
+                "tags": [
+                    "List all MRT lines"
+                ],
+                "summary": "Returns lines",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "schema": {
+                            "$ref": "#/definitions/lines"
+                        }
+                    }
+                }
+            }
+        },
+        "/route": {
+            "get": {
+                "tags": [
+                    "Get the route from source to destination"
+                ],
+                "summary": "Returns shortest route(s)",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "source",
+                        "in": "query",
+                        "description": "Origin Station",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "destination",
+                        "in": "query",
+                        "description": "Destination Station",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "description": "Start Time in YYYY-MM-DDThh:mm format",
+                        "required": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2019-01-31T16:00"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "schema": {
+                            "$ref": "#/definitions/route"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
