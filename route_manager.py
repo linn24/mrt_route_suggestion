@@ -1,12 +1,12 @@
 import os
 from flask import Flask, jsonify, request
 from datetime import datetime
-from collections import defaultdict
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base, Line, Station, SQLALCHEMY_DATABASE_URI
 import shortest_route
+import route_helper
 
 from flask_swagger_ui import get_swaggerui_blueprint
 
@@ -35,7 +35,7 @@ app.register_blueprint(SWAGGERUI_BLUEPRINT, url_prefix=SWAGGER_URL)
 
 
 @app.route('/lines', methods=['GET'])
-def getLines():
+def get_lines():
     """
     method name: generate json for all lines and stations
     Args:
@@ -57,7 +57,7 @@ def getLines():
 
 
 @app.route('/route', methods=['GET'])
-def getRoute():
+def get_route():
     """
     method name: get the route from given source to destination at given start time
     Args:
@@ -73,92 +73,48 @@ def getRoute():
     source = request.args.get('source')
     destination = request.args.get('destination')
     start_time = datetime.strptime(request.args.get('start_time'), '%Y-%m-%dT%H:%M')
-    result_route = {}
-    route_stations = []
-
-    # 1) The list of stations is retrieved from database.
-    #    - filtered by start time of journey
-    #    - ordered by ascending order of line ID and station code number
-    stations = session.query(Station).filter(Station.opening_date < start_time) \
-        .order_by(Station.line_id.asc(), Station.code_number.asc())
-    print([station.name for station in stations])
-
+    
+    # Retrieve the list of stations from database
+    # filtered by start time of journey and,
+    # ordered by ascending order of line ID and station code number
+    stations = route_helper.get_stations_by_time(session, start_time)    
+    
+    # Group stations by name
+    # i.e., interchanges will have multiple station codes
+    station_name_to_id = route_helper.populate_station_name_to_id_dict(stations)
+    
+    # Create the list of station IDs to be used as vertices in finding route
     vertices = [station.id for station in stations]
+    
+    # Populate the list of edges
+    edges = route_helper.populate_edges(station_name_to_id, stations)
 
-    name_to_id = {}
-    for station in stations:    
-        if name_to_id.get(station.name):
-            name_to_id[station.name].append(station.id)
-        else:
-            name_to_id[station.name] = [station.id]
-    id_to_station = {station.id: station for station in stations}
-    
-    # 2) The list of edges is populated in memory.
-    edges = defaultdict(list)
-    
-    #    - add links to self for interchanges
-    for key,values in name_to_id.items():
-        if len(values) > 1:
-            for id1 in values:
-                for id2 in values:
-                    if id1 != id2:
-                        shortest_route.add_edge(edges, id1, id2)
-    
-    #    - add links between stations in same line
-    for i in range(1, stations.count()):
-        prev_station = stations[i-1]
-        current_station = stations[i]
-        if prev_station.line_id == current_station.line_id:
-            shortest_route.add_edge(edges, prev_station.id, current_station.id)
-    print(edges)
-
-    # 3) Shortest route from source to destination station is generated.
-    route_station_ids = shortest_route.getShortestRoute(
+    # Generate shortest route from source to destination station
+    route_station_ids = shortest_route.get_shortest_route(
         edges,
-        name_to_id.get(source)[0],
-        name_to_id.get(destination)[0],
+        station_name_to_id.get(source)[0],
+        station_name_to_id.get(destination)[0],
         vertices)
 
-    # 4) Each step in the shortest route is translated into a detailed instruction.
-    route_station_names = []
-    line_ids = set()
-    for station_id in route_station_ids:
-        station = id_to_station.get(station_id)
-        route_stations.append(station)
-        route_station_names.append(station.name)
-        line_ids.add(station.line_id)
-
-    #    - Retrieve lines from database
-    lines = session.query(Line).filter(Line.id.in_(line_ids))
-    line_id_to_name = {line.id: line.name for line in lines}
-    print(line_id_to_name)
+    # Populate Station Dictionary { station ID => station information}
+    id_to_station = {station.id: station for station in stations if station.id in route_station_ids}
     
-    #    - Translate each step
-    steps = []
-    for i in range(1, len(route_stations)):
-        src_station = route_stations[i-1]
-        dest_station = route_stations[i]
-        if src_station.line_id == dest_station.line_id:
-            steps.append("Take {} line from {} to {}".format(
-                line_id_to_name.get(src_station.line_id),
-                src_station.name,
-                dest_station.name
-            ))
-        else:
-            steps.append("Change from {} line to {} line".format(
-                line_id_to_name.get(src_station.line_id),
-                line_id_to_name.get(dest_station.line_id),
-            ))
+    # Populate station list, station name list and line dictionary from the route
+    route_stations, route_station_names, line_id_to_name = route_helper.populate_stations_and_lines_from_route(
+        session,
+        route_station_ids,
+        id_to_station)
+   
+    # Translate each step in the route
+    steps = route_helper.convert_route_to_steps(route_stations, line_id_to_name)
 
-    result_route['stations_travelled'] = len(set(route_station_names))
-    result_route['stations'] = ["{}{}".format(
-                                    line_id_to_name.get(station.line_id),
-                                    station.code_number
-                                ) for station in route_stations]
-    result_route['details'] = "\n".join(steps)
-    print(result_route['details'])
+    # Populate station codes in the route
+    station_codes = route_helper.populate_station_codes(line_id_to_name, route_stations)
 
-    return jsonify(route=result_route)
+    # Create route response
+    route_response = route_helper.create_route_response(route_station_names, station_codes, steps)
+
+    return jsonify(route=route_response)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))   # Use PORT if it's there.

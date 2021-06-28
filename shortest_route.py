@@ -7,9 +7,7 @@ def add_edge(adj, src, dest):
 def BFS(adj, src, dest, vertices, predecessor, distance):
     queue = []
     visited = {}
-
-    #visited = {v: False for v in vertices}
-
+    
     for v in vertices:
         visited[v] = False
         predecessor[v] = None
@@ -33,7 +31,7 @@ def BFS(adj, src, dest, vertices, predecessor, distance):
                     return True
     return False
 
-def getShortestRoute(adj, src, dest, vertices):
+def get_shortest_route(adj, src, dest, vertices):
     predecessor = {}
     distance = {}
     result = ""
