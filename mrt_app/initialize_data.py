@@ -1,7 +1,7 @@
 import sys
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, Line, Station
+from mrt_app.models import Base, Line, Station
 import pandas as pd
 from datetime import datetime
 

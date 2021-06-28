@@ -18,6 +18,12 @@ Install the necessary packages in *requirements.txt* using the command:
 7) Once the application is up, APIs can be tested using the URL:  
 [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
 
+## Unit Tests
+1) Install mrt_app:  
+`pip install -e .`
+2) Run tests:  
+`pytest`
+
 ## APIs
 ### Get Route
 #### Search Parameters

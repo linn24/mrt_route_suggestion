@@ -1,7 +1,6 @@
-from models import Base, Line, Station
-from collections import defaultdict
+from mrt_app.models import Line, Station
 from itertools import combinations
-import shortest_route
+from mrt_app.shortest_route import add_edge
 
 def get_stations_by_time(session, start_time):
     stations = session.query(Station).filter(Station.opening_date < start_time) \
@@ -18,24 +17,23 @@ def populate_station_name_to_id_dict(stations):
             station_name_to_id[station.name] = [station.id]
     return station_name_to_id
 
-def populate_edges(station_name_to_id, stations):
-    edges = defaultdict(list)
-    
+def populate_edges_for_interchange(edges, station_name_to_id):
     # Add links to self for interchanges
     for _, values in station_name_to_id.items():
         if len(values) > 1:
             pairs = combinations(values, 2)
             for pair in pairs:
-                shortest_route.add_edge(edges, pair[0], pair[1])
-    
+                add_edge(edges, pair[0], pair[1])
+    print(edges)
+
+def populate_edges(edges, stations):  
     # Add links between stations in same line
     for i in range(1, stations.count()):
         prev_station = stations[i-1]
         current_station = stations[i]
         if prev_station.line_id == current_station.line_id:
-            shortest_route.add_edge(edges, prev_station.id, current_station.id)
+            add_edge(edges, prev_station.id, current_station.id)
     print(edges)
-    return edges
 
 def get_lines_by_id(session, line_ids):
     lines = session.query(Line).filter(Line.id.in_(line_ids))
@@ -86,7 +84,6 @@ def populate_station_codes(line_id_to_name, route_stations):
                         station.code_number
                     ) for station in route_stations]
     return station_codes
-
 
 def create_route_response(route_station_names, station_codes, steps):
     route_response = {}

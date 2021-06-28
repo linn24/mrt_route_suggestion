@@ -1,12 +1,12 @@
 import os
 from flask import Flask, jsonify, request
 from datetime import datetime
+from collections import defaultdict
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, Line, Station, SQLALCHEMY_DATABASE_URI
-import shortest_route
-import route_helper
+from mrt_app.models import Base, Line, Station, SQLALCHEMY_DATABASE_URI
+from mrt_app import shortest_route, route_helper
 
 from flask_swagger_ui import get_swaggerui_blueprint
 
@@ -87,7 +87,9 @@ def get_route():
     vertices = [station.id for station in stations]
     
     # Populate the list of edges
-    edges = route_helper.populate_edges(station_name_to_id, stations)
+    edges = defaultdict(list)
+    route_helper.populate_edges_for_interchange(edges, station_name_to_id)
+    route_helper.populate_edges(edges, stations)
 
     # Generate shortest route from source to destination station
     route_station_ids = shortest_route.get_shortest_route(
