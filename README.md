@@ -16,7 +16,7 @@ Install the necessary packages in *requirements.txt* using the command:
 6) Start the application by running the command:  
 `python route_manager.py`
 7) Once the application is up, APIs can be tested using the URL:  
-`http://<IP address>:<port number>/api/docs`
+[http://localhost:8000/api/docs](http://localhost:8000/api/docs)
 
 ## APIs
 ### Get Route
