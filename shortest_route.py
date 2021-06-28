@@ -33,13 +33,15 @@ def BFS(adj, src, dest, vertices, predecessor, distance):
                     return True
     return False
 
-def printShortestDistance(adj, src, dest, vertices):
+def getShortestRoute(adj, src, dest, vertices):
     predecessor = {}
     distance = {}
     result = ""
 
     if (BFS(adj, src, dest, vertices, predecessor, distance) == False):
         result = "No route is found."
+        print(result)
+        return []
     else:
         path = []
         node = dest
@@ -50,6 +52,7 @@ def printShortestDistance(adj, src, dest, vertices):
             node = predecessor[node]
 
         result += "Shortest route length is {}.".format(distance[dest])
-
-        result += "\nRoute: {}".format(path[::-1])
-    return result
+        result += "\n"
+        result += "Route: {}".format(path[::-1])
+        print(result)
+    return path[::-1]

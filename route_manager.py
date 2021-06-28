@@ -55,6 +55,7 @@ def getLines():
         serializedLines.append(serializedLine)
     return jsonify(lines=serializedLines)
 
+
 @app.route('/route', methods=['GET'])
 def getRoute():
     """
@@ -112,19 +113,50 @@ def getRoute():
     print(edges)
 
     # 3) Shortest route from source to destination station is generated.
-    result = shortest_route.printShortestDistance(
+    route_station_ids = shortest_route.getShortestRoute(
         edges,
         name_to_id.get(source)[0],
         name_to_id.get(destination)[0],
         vertices)
 
     # 4) Each step in the shortest route is translated into a detailed instruction.
+    route_station_names = []
+    line_ids = set()
+    for station_id in route_station_ids:
+        station = id_to_station.get(station_id)
+        route_stations.append(station)
+        route_station_names.append(station.name)
+        line_ids.add(station.line_id)
 
+    #    - Retrieve lines from database
+    lines = session.query(Line).filter(Line.id.in_(line_ids))
+    line_id_to_name = {line.id: line.name for line in lines}
+    print(line_id_to_name)
+    
+    #    - Translate each step
+    steps = []
+    for i in range(1, len(route_stations)):
+        src_station = route_stations[i-1]
+        dest_station = route_stations[i]
+        if src_station.line_id == dest_station.line_id:
+            steps.append("Take {} line from {} to {}".format(
+                line_id_to_name.get(src_station.line_id),
+                src_station.name,
+                dest_station.name
+            ))
+        else:
+            steps.append("Change from {} line to {} line".format(
+                line_id_to_name.get(src_station.line_id),
+                line_id_to_name.get(dest_station.line_id),
+            ))
 
-
-    result_route['stations_travelled'] = len(route_stations)
-    result_route['stations'] = route_stations
-    result_route['details'] = result
+    result_route['stations_travelled'] = len(set(route_station_names))
+    result_route['stations'] = ["{}{}".format(
+                                    line_id_to_name.get(station.line_id),
+                                    station.code_number
+                                ) for station in route_stations]
+    result_route['details'] = "\n".join(steps)
+    print(result_route['details'])
 
     return jsonify(route=result_route)
 
