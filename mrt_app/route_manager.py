@@ -56,7 +56,7 @@ def get_lines():
     return jsonify(lines=serializedLines)
 
 
-@app.route('/route/v1', methods=['GET'])
+@app.route('/route/shortest/v1', methods=['GET'])
 def get_shortest_route():
     """
     method name: get the shortest route from given source to destination at given start time
@@ -121,7 +121,7 @@ def get_shortest_route():
     return jsonify(route=route_response)
 
 
-@app.route('/route/v2', methods=['GET'])
+@app.route('/route/shortest/v2', methods=['GET'])
 def get_shortest_route_with_weight():
     """
     method name: get the shortest route from given source to destination at given start time considering distance as weight
@@ -147,14 +147,11 @@ def get_shortest_route_with_weight():
     # Group stations by name
     # i.e., interchanges will have multiple station codes
     station_name_to_id = route_helper.populate_station_name_to_id_dict(stations)
-    
-    # Create the list of station IDs to be used as vertices in finding route
-    vertices = [station.id for station in stations]
-    
+        
     # Populate the list of edges
     edges = []
-    route_helper.populate_weighted_edges_for_interchange(edges, station_name_to_id, True)
-    route_helper.populate_weighted_edges(edges, stations, True)
+    route_helper.populate_distance_weighted_edges_for_interchange(edges, station_name_to_id, True)
+    route_helper.populate_distance_weighted_edges(edges, stations, True)
 
     # Generate shortest route from source to destination station
     distance, route_station_ids = route_generator_v2.get_shortest_route(
@@ -181,6 +178,72 @@ def get_shortest_route_with_weight():
     # Create route response
     # distance doesn't count the source stations, so we need to add 1.
     route_response = route_helper.create_route_response(distance + 1, station_codes, steps)
+
+    return jsonify(route=route_response)
+
+
+@app.route('/route/fastest', methods=['GET'])
+def get_fastest_route():
+    """
+    method name: get the fastest route from given source to destination at given start time considering delay or travel time as weight
+    Args:
+        source: origin station
+        destination: destination station
+        start time: start time of the journey
+    Returns:
+        route information:
+            stations_travelled: number of station
+            stations: the list of stations along the route
+            details: detailed instructions
+    """
+    source = request.args.get('source')
+    destination = request.args.get('destination')
+    start_time = datetime.strptime(request.args.get('start_time'), '%Y-%m-%dT%H:%M')
+    
+    # Retrieve the list of stations from database
+    # filtered by start time of journey and,
+    # ordered by ascending order of line ID and station code number
+    stations = route_helper.get_stations_by_time(session, start_time)    
+    
+    # Group stations by name
+    # i.e., interchanges will have multiple station codes
+    station_name_to_id = route_helper.populate_station_name_to_id_dict(stations)
+    
+    # Retrieve the list of traffic information to be used when populating weighted edges
+    traffics = route_helper.get_traffic_info_by_time(session, start_time.hour, (start_time.weekday() > 4))
+    line_id_to_delay = {traffic.line_id:traffic.delay_in_minutes for traffic in traffics}
+    
+    # Populate the list of edges
+    edges = []
+    route_helper.populate_time_weighted_edges_for_interchange(edges, station_name_to_id, line_id_to_delay, True)
+    route_helper.populate_time_weighted_edges(edges, stations, line_id_to_delay, True)
+    
+    # Generate shortest route from source to destination station
+    time_taken, route_station_ids = route_generator_v2.get_shortest_route(
+        edges,
+        station_name_to_id.get(source)[0] if station_name_to_id.get(source) else None,
+        station_name_to_id.get(destination)[0] if station_name_to_id.get(destination) else None)
+
+    # Populate Station Dictionary { station ID => station information}
+    id_to_station = {station.id: station for station in stations if station.id in route_station_ids}
+    
+    # Populate station list, station name list and line dictionary from the route
+    route_station_names = []
+    route_stations, line_id_to_name = route_helper.populate_stations_and_lines_from_route(
+        session,
+        route_station_ids,
+        route_station_names,
+        id_to_station)
+   
+    # Translate each step in the route
+    steps = route_helper.convert_route_to_steps(route_stations, line_id_to_name)
+
+    # Populate station codes in the route
+    station_codes = route_helper.populate_station_codes(line_id_to_name, route_stations)
+
+    # Create route response
+    # distance doesn't count the source stations, so we need to add 1.
+    route_response = route_helper.create_route_response_with_time(len(set(route_station_names)), time_taken, station_codes, steps)
 
     return jsonify(route=route_response)
 

@@ -76,6 +76,10 @@
                     "type": "string",
                     "format": "number"
                 },
+                "time_taken": {
+                    "type": "string",
+                    "format": "number"
+                },
                 "stations": {
                     "type": "array",
                     "items": {
@@ -110,12 +114,12 @@
                 }
             }
         },
-        "/route/v1": {
+        "/route/shortest/v1": {
             "get": {
                 "tags": [
-                    "Get the route from source to destination"
+                    "Get the shortest route from source to destination"
                 ],
-                "summary": "Returns shortest route(s)",
+                "summary": "Returns shortest route",
                 "produces": [
                     "application/json"
                 ],
@@ -154,12 +158,56 @@
                 }
             }
         },
-        "/route/v2": {
+        "/route/shortest/v2": {
             "get": {
                 "tags": [
-                    "Get the route from source to destination"
+                    "Get the shortest route from source to destination"
                 ],
-                "summary": "Returns shortest route(s) considering distance",
+                "summary": "Returns shortest route considering distance",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "source",
+                        "in": "query",
+                        "description": "Origin Station",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "destination",
+                        "in": "query",
+                        "description": "Destination Station",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "description": "Start Time in YYYY-MM-DDThh:mm format",
+                        "required": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2019-01-31T16:00"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "schema": {
+                            "$ref": "#/definitions/route"
+                        }
+                    }
+                }
+            }
+        },
+        "/route/fastest": {
+            "get": {
+                "tags": [
+                    "Get the fastest route from source to destination"
+                ],
+                "summary": "Returns fastest route considering delay/travel time",
                 "produces": [
                     "application/json"
                 ],

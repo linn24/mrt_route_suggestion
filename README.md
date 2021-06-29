@@ -25,6 +25,17 @@ Install the necessary packages in *requirements.txt* using the command:
 `pytest`
 
 ## APIs
+### Get All MRT Lines
+#### Result - MRT Line Information
+- List of lines
+    - ID of each line
+    - Name of each line
+    - List of stations
+        - ID of each station
+        - Name of each station
+        - Code number of each station
+        - Opening date of each station
+
 ### Get Shortest Route - V1 (Without Consideration for Distance)
 #### Search Parameters
 - Source station
@@ -65,13 +76,22 @@ Install the necessary packages in *requirements.txt* using the command:
 3) Shortest route from source to destination station is generated.
 4) Each step in the shortest route is translated into a detailed instruction.
 
-### Get All MRT Lines
-#### Result - MRT Line Information
-- List of lines
-    - ID of each line
-    - Name of each line
-    - List of stations
-        - ID of each station
-        - Name of each station
-        - Code number of each station
-        - Opening date of each station
+### Get Fastest Route (With Consideration for Delay)
+#### Search Parameters
+- Source station
+- Destination station
+- Start time of journey
+
+#### Result - Route Information
+- Number of stations travelled
+- List of stations along the route
+- Detailed instructions
+
+#### How Implementation Works
+1) The list of stations is retrieved from database.
+    - filtered by start time of journey
+    - ordered by ascending order of line ID and station code number
+2) The list of edges is populated in memory.
+    - Weight of each edge is the travel time or delay between two stations.
+3) Shortest route from source to destination station is generated.
+4) Each step in the shortest route is translated into a detailed instruction.

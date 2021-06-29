@@ -1,11 +1,29 @@
-from mrt_app.models import Line, Station
+from sqlalchemy.sql.expression import and_
+from mrt_app.models import Line, Station, Traffic
 from itertools import combinations
 
+
+# functions to retrieve data from database
 def get_stations_by_time(session, start_time):
     stations = session.query(Station).filter(Station.opening_date < start_time) \
         .order_by(Station.line_id.asc(), Station.code_number.asc())
     return stations
 
+def get_lines_by_id(session, line_ids):
+    lines = session.query(Line).filter(Line.id.in_(line_ids))
+    return lines
+
+def get_traffic_info_by_time(session, target_hour, is_weekend):
+    traffics = session.query(Traffic).filter(
+                and_(
+                    Traffic.start_hour <= target_hour,
+                    Traffic.end_hour > target_hour,
+                    Traffic.is_weekend == is_weekend,
+                    Traffic.is_operating == True
+                ))
+    return traffics
+
+# other helper functions
 def populate_station_name_to_id_dict(stations):
     station_name_to_id = {}
     for station in stations:    
@@ -31,7 +49,7 @@ def populate_edges(edges, stations):
         if prev_station.line_id == current_station.line_id:
             add_edge(edges, prev_station.id, current_station.id)
 
-def populate_weighted_edges_for_interchange(edges, station_name_to_id, isBidirection):
+def populate_distance_weighted_edges_for_interchange(edges, station_name_to_id, isBidirection):
     # Add links to self for interchanges
     for _, values in station_name_to_id.items():
         if len(values) > 1:
@@ -42,7 +60,7 @@ def populate_weighted_edges_for_interchange(edges, station_name_to_id, isBidirec
                 else:
                     add_single_edge(edges, pair[0], pair[1], 0)
 
-def populate_weighted_edges(edges, stations, isBidirection):  
+def populate_distance_weighted_edges(edges, stations, isBidirection):  
     # Add links between stations in same line
     for i in range(1, stations.count()):
         prev_station = stations[i-1]
@@ -53,9 +71,30 @@ def populate_weighted_edges(edges, stations, isBidirection):
             else:
                 add_single_edge(edges, prev_station.id, current_station.id, 1)
 
-def get_lines_by_id(session, line_ids):
-    lines = session.query(Line).filter(Line.id.in_(line_ids))
-    return lines
+def populate_time_weighted_edges_for_interchange(edges, station_name_to_id, line_id_to_delay, isBidirection):
+    # Add links to self for interchanges
+    delay = line_id_to_delay.get(None)
+    for _, values in station_name_to_id.items():
+        if len(values) > 1:
+            pairs = combinations(values, 2)
+            for pair in pairs:
+                if isBidirection:
+                    add_bidirection_edge(edges, pair[0], pair[1], delay)
+                else:
+                    add_single_edge(edges, pair[0], pair[1], delay)
+
+def populate_time_weighted_edges(edges, stations, line_id_to_delay, isBidirection):  
+    # Add links between stations in same line
+    for i in range(1, stations.count()):
+        prev_station = stations[i-1]
+        current_station = stations[i]
+        if prev_station.line_id == current_station.line_id:
+            delay = line_id_to_delay.get(prev_station.line_id)
+            if delay:
+                if isBidirection:
+                    add_bidirection_edge(edges, prev_station.id, current_station.id, delay)
+                else:
+                    add_single_edge(edges, prev_station.id, current_station.id, delay)
 
 def populate_line_id_to_name_dict(lines):
     line_id_to_name = {line.id: line.name for line in lines}
@@ -111,6 +150,14 @@ def create_route_response(distance, station_codes, steps):
     else:
         route_response['stations_travelled'] = distance
         route_response['details'] = "\n".join(steps)
+    return route_response
+
+def create_route_response_with_time(distance, time_taken, station_codes, steps):
+    route_response = create_route_response(distance, station_codes, steps)
+    if len(station_codes) == 0:
+        route_response['time_taken'] = 0
+    else:
+        route_response['time_taken'] = time_taken
     return route_response
 
 def add_edge(adj, src, dest):
