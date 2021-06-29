@@ -1,11 +1,9 @@
 from mrt_app.models import Line, Station
 from itertools import combinations
-from mrt_app.shortest_route import add_edge
 
 def get_stations_by_time(session, start_time):
     stations = session.query(Station).filter(Station.opening_date < start_time) \
         .order_by(Station.line_id.asc(), Station.code_number.asc())
-    print([station.name for station in stations])
     return stations
 
 def populate_station_name_to_id_dict(stations):
@@ -24,7 +22,6 @@ def populate_edges_for_interchange(edges, station_name_to_id):
             pairs = combinations(values, 2)
             for pair in pairs:
                 add_edge(edges, pair[0], pair[1])
-    print(edges)
 
 def populate_edges(edges, stations):  
     # Add links between stations in same line
@@ -33,7 +30,28 @@ def populate_edges(edges, stations):
         current_station = stations[i]
         if prev_station.line_id == current_station.line_id:
             add_edge(edges, prev_station.id, current_station.id)
-    print(edges)
+
+def populate_weighted_edges_for_interchange(edges, station_name_to_id, isBidirection):
+    # Add links to self for interchanges
+    for _, values in station_name_to_id.items():
+        if len(values) > 1:
+            pairs = combinations(values, 2)
+            for pair in pairs:
+                if isBidirection:
+                    add_bidirection_edge(edges, pair[0], pair[1], 0)
+                else:
+                    add_single_edge(edges, pair[0], pair[1], 0)
+
+def populate_weighted_edges(edges, stations, isBidirection):  
+    # Add links between stations in same line
+    for i in range(1, stations.count()):
+        prev_station = stations[i-1]
+        current_station = stations[i]
+        if prev_station.line_id == current_station.line_id:
+            if isBidirection:
+                add_bidirection_edge(edges, prev_station.id, current_station.id, 1)
+            else:
+                add_single_edge(edges, prev_station.id, current_station.id, 1)
 
 def get_lines_by_id(session, line_ids):
     lines = session.query(Line).filter(Line.id.in_(line_ids))
@@ -41,24 +59,23 @@ def get_lines_by_id(session, line_ids):
 
 def populate_line_id_to_name_dict(lines):
     line_id_to_name = {line.id: line.name for line in lines}
-    print(line_id_to_name)
     return line_id_to_name
 
-def populate_stations_and_lines_from_route(session, route_station_ids, id_to_station):
+def populate_stations_and_lines_from_route(session, route_station_ids, route_station_names, id_to_station):
     route_stations = []
-    route_station_names = []
     line_ids = set()
 
     for station_id in route_station_ids:
         station = id_to_station.get(station_id)
         route_stations.append(station)
-        route_station_names.append(station.name)
+        if route_station_names is not None:
+            route_station_names.append(station.name)
         line_ids.add(station.line_id)
     
     lines = get_lines_by_id(session, line_ids)
     line_id_to_name = populate_line_id_to_name_dict(lines)
 
-    return route_stations, route_station_names, line_id_to_name
+    return route_stations, line_id_to_name
 
 def convert_route_to_steps(route_stations, line_id_to_name):
     steps = []
@@ -85,10 +102,24 @@ def populate_station_codes(line_id_to_name, route_stations):
                     ) for station in route_stations]
     return station_codes
 
-def create_route_response(route_station_names, station_codes, steps):
+def create_route_response(distance, station_codes, steps):
     route_response = {}
-    route_response['stations_travelled'] = len(set(route_station_names))
     route_response['stations'] = station_codes
-    route_response['details'] = "\n".join(steps)
-    print(route_response['details'])
+    if len(station_codes) == 0:
+        route_response['stations_travelled'] = 0
+        route_response['details'] = "No route is found."
+    else:
+        route_response['stations_travelled'] = distance
+        route_response['details'] = "\n".join(steps)
     return route_response
+
+def add_edge(adj, src, dest):
+    adj[src].append(dest)
+    adj[dest].append(src)
+
+def add_bidirection_edge(adj, src, dest, weight):
+    adj.append((src, dest, weight))
+    adj.append((dest, src, weight))
+
+def add_single_edge(adj, src, dest, weight):
+    adj.append((src, dest, weight))

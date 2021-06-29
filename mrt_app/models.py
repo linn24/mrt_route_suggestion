@@ -25,7 +25,6 @@ class Line(Base):
         }
 
 
-
 class Station(Base):
     """
     MRT Station information

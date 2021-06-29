@@ -1,4 +1,5 @@
-from mrt_app.shortest_route import add_edge, get_shortest_route
+from mrt_app.route_generator_v1 import get_shortest_route
+from mrt_app.route_helper import add_edge
 from collections import defaultdict
 
 def test_get_shortest_route():

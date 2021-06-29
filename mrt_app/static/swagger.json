@@ -110,12 +110,56 @@
                 }
             }
         },
-        "/route": {
+        "/route/v1": {
             "get": {
                 "tags": [
                     "Get the route from source to destination"
                 ],
                 "summary": "Returns shortest route(s)",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "source",
+                        "in": "query",
+                        "description": "Origin Station",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "destination",
+                        "in": "query",
+                        "description": "Destination Station",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "description": "Start Time in YYYY-MM-DDThh:mm format",
+                        "required": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2019-01-31T16:00"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "schema": {
+                            "$ref": "#/definitions/route"
+                        }
+                    }
+                }
+            }
+        },
+        "/route/v2": {
+            "get": {
+                "tags": [
+                    "Get the route from source to destination"
+                ],
+                "summary": "Returns shortest route(s) considering distance",
                 "produces": [
                     "application/json"
                 ],

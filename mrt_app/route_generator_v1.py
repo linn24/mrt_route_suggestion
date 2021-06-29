@@ -1,9 +1,5 @@
 import sys
 
-def add_edge(adj, src, dest):
-    adj[src].append(dest)
-    adj[dest].append(src)
-
 def BFS(adj, src, dest, vertices, predecessor, distance):
     queue = []
     visited = {}
@@ -34,23 +30,15 @@ def BFS(adj, src, dest, vertices, predecessor, distance):
 def get_shortest_route(adj, src, dest, vertices):
     predecessor = {}
     distance = {}
-    result = ""
-
+    
     if (BFS(adj, src, dest, vertices, predecessor, distance) == False):
-        result = "No route is found."
-        print(result)
         return []
-    else:
-        path = []
-        node = dest
-        path.append(node)
+    
+    path = []
+    node = dest
+    path.append(node)
 
-        while predecessor[node] is not None:
-            path.append(predecessor[node])
-            node = predecessor[node]
-
-        result += "Shortest route length is {}.".format(distance[dest])
-        result += "\n"
-        result += "Route: {}".format(path[::-1])
-        print(result)
+    while predecessor[node] is not None:
+        path.append(predecessor[node])
+        node = predecessor[node]
     return path[::-1]
