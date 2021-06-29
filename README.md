@@ -8,13 +8,13 @@ Install the necessary packages in *requirements.txt* using the command:
 ## Setup
 1) Download the source codes.
 2) Open command prompt.
-3) Change the directory to the location you saved the downloaded source codes.
+3) Change the directory to *mrt_route_suggestion* in the location you saved the downloaded source codes.
 4) To setup the database, run *models.py* using the command:  
-`python models.py`
+`python mrt_app/models.py`
 5) To import data in .csv file into database, run *initialize_data.py* using the command:  
-`python initialize_data.py`
+`python mrt_app/initialize_data.py`
 6) Start the application by running the command:  
-`python route_manager.py`
+`python mrt_app/route_manager.py`
 7) Once the application is up, APIs can be tested using the URL:  
 [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
 
@@ -25,7 +25,7 @@ Install the necessary packages in *requirements.txt* using the command:
 `pytest`
 
 ## APIs
-### Get Shortest Route
+### Get Shortest Route - V1 (Without Consideration for Distance)
 #### Search Parameters
 - Source station
 - Destination station
@@ -44,7 +44,7 @@ Install the necessary packages in *requirements.txt* using the command:
 3) Shortest route from source to destination station is generated.
 4) Each step in the shortest route is translated into a detailed instruction.
 
-### Get Fastest Route
+### Get Shortest Route - V2 (With Consideration for Distance)
 #### Search Parameters
 - Source station
 - Destination station

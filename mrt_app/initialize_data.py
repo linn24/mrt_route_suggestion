@@ -1,12 +1,15 @@
 import sys
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from mrt_app.models import Base, Line, Station
+from sqlalchemy.sql.expression import true
+from sqlalchemy.sql.sqltypes import Boolean
+from mrt_app.models import Base, Line, Station, Traffic
 import pandas as pd
 from datetime import datetime
 
 SQLALCHEMY_DATABASE_URI = 'sqlite:///mrt.db'
 DATA_FILE_NAME = 'StationMap.csv'
+TRAFFIC_FILE_NAME = 'TrafficInfo.csv'
 
 engine = create_engine(SQLALCHEMY_DATABASE_URI)
 Base.metadata.bind = create_engine
@@ -14,12 +17,12 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
 
-def Load_Data(file_name):
+def load_data(file_name):
     data = pd.read_csv(file_name)
     return data.values.tolist()
 
 try:
-    row_list = Load_Data(DATA_FILE_NAME)
+    row_list = load_data(DATA_FILE_NAME)
     line_set = set()
 
     # Populate lines
@@ -46,10 +49,23 @@ try:
             opening_date = datetime.strptime(row[2], '%d %B %Y').date(),
         )
         session.add(station)
+
+    row_list = load_data(TRAFFIC_FILE_NAME)
+    # Populate traffic information
+    for row in row_list:
+        traffic = Traffic(
+            line_id = line_dict.get(str(row[0])),
+            start_hour = int(row[1]),
+            end_hour = int(row[2]),
+            is_weekend = bool(row[3]),
+            is_operating = bool(row[4]),
+            delay_in_minutes = int(row[5]),
+        )
+        session.add(traffic)
     
     session.commit()
 except:
-    print("Unexpected error:", sys.exc_info()[0])
+    print("Unexpected error:", sys.exc_info())
     # Rollback the changes on error
     session.rollback()
 finally:
